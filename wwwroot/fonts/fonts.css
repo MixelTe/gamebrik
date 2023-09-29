@@ -1,0 +1,13 @@
+@font-face {
+	font-family: "Neucha";
+	font-style: normal;
+	font-weight: 400;
+	src: url(./neucha.ttf);
+}
+
+@font-face {
+	font-family: "Pangolin";
+	font-style: normal;
+	font-weight: 400;
+	src: url(./Pangolin.ttf);
+}
