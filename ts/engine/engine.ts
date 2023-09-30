@@ -15,6 +15,7 @@ class Engine
 		]);
 		document.head.appendChild(styles);
 		document.body.classList.add("body");
+		window.addEventListener("contextmenu", e => e.preventDefault());
 	}
 
 	public registerScenes(scenes: { [id: string]: typeof Scene })
@@ -41,6 +42,13 @@ class Engine
 		document.body.innerHTML = "";
 		document.body.appendChild(this.currentScene.root);
 		this.currentScene.root.classList.add("scene");
+		localStorage.setItem(localstorageKey_scene, id);
+	}
+
+	public startSameSceneAfterReload(defaultSceneId: string)
+	{
+		const id = localStorage.getItem(localstorageKey_scene) || defaultSceneId;
+		this.startScene(id);
 	}
 
 	public localize<T extends Record<string, Record<Language, any>>, K extends { [key in keyof T]: () => T[key][Language] }>(fields: T): K
@@ -63,5 +71,7 @@ class Engine
 }
 
 type Language = "ru" | "en";
+
+const localstorageKey_scene = "Engine_currentScene";
 
 export const engine = new Engine();

@@ -1,8 +1,6 @@
 import { Engine } from "../engine/index.js";
-import { SceneStart } from "./scenes/start.js";
+import SceneIds, { Scenes } from "./scenes.js";
 
-Engine.registerScenes({
-	start: SceneStart,
-})
-
-Engine.startScene("start");
+Engine.registerScenes(Scenes);
+// Engine.startScene(SceneIds.start);
+Engine.startSameSceneAfterReload(SceneIds.start);

@@ -10,7 +10,7 @@ export class Builder
 	private stylesEl: HTMLStyleElement | null = null;
 	private langSync: (() => void)[] = [];
 
-	constructor(scene: Scene)
+	constructor(private scene: Scene)
 	{
 		this.prefix = scene.constructor.name;
 		this.context = scene.root;
@@ -28,12 +28,25 @@ export class Builder
 		{
 			if (props.styles)
 			{
-				if (!props.styles.className.startsWith(this.prefix))
+				let styles: Styles | undefined = props.styles;
+				const newStyles: Styles[] = [];
+
+				while (styles)
 				{
-					props.styles.className = [this.prefix, tagName, Random.string()].join("_");
+					if (!styles.className || (!styles.prefix && !styles.className.startsWith(this.prefix)))
+					{
+						styles.className = [styles.prefix || this.prefix, styles.name || tagName, Random.string()].join("_");
+					}
+					newStyles.push(styles);
+
+					styles = styles.base;
 				}
-				el.classList.add(props.styles.className);
-				this.styles.add(props.styles);
+
+				for (let i = newStyles.length - 1; i >= 0; i--)
+				{
+					el.classList.add(newStyles[i].className);
+					this.styles.add(newStyles[i]);
+				}
 			}
 			if (props.css)
 			{
@@ -106,7 +119,6 @@ export class Builder
 			const parent = this.context;
 			const update = () =>
 			{
-				console.log("some log for testing");
 				const context = this.context;
 				this.context = parent;
 				this.context.innerHTML = "";
@@ -132,7 +144,7 @@ export class Builder
 			this.div({
 				css: {
 					display: "grid",
-					gridTemplateRows: (header && footer) ? "auto 1fr auto" : footer ? "1fr auto" : "1fr",
+					gridTemplateRows: [header && "auto", content && "1fr", footer && "auto"].filter(v => v).join(" "),
 					height: "100%",
 					width: "100%",
 					maxWidth: props?.width,
@@ -158,18 +170,91 @@ export class Builder
 	{
 		return this.initEl("button", props, content);
 	}
+
+	public img(props?: Props, url?: string)
+	{
+		const img = this.initEl("img", props);
+		img.src = url || "";
+		return img;
+	}
+
+	public canvas(props?: Props)
+	{
+		const canvas = document.createElement("canvas");
+		const div = this.div({ ...props, css: { ...props?.css, display: "flex" } }, () => canvas);
+		this.scene._initCanvas(canvas);
+		return div;
+	}
+
+	public static loadSvg(url: string, color: "fill" | "stroke" | "both" | "none" = "none")
+	{
+		let svgTemplate: HTMLTemplateElement | null = null;
+		let onLoad: ((svgTemplate: HTMLTemplateElement) => void)[] = [];
+		fetch(url).then(r => r.text()).then(r =>
+		{
+			svgTemplate = document.createElement("template");
+			svgTemplate.innerHTML = r;
+
+			const svg = svgTemplate.content.firstChild;
+			if (svg instanceof SVGElement)
+			{
+				svg.style.width = "1em";
+				svg.style.height = "1em";
+				if (color == "fill" || color == "both")
+					svg.style.fill = "currentColor";
+				if (color == "stroke" || color == "both")
+					svg.style.stroke = "currentColor";
+			}
+
+			const st = svgTemplate;
+			onLoad.forEach(f => f(st));
+			onLoad = [];
+		});
+		return () =>
+		{
+			const svg = svgTemplate?.content?.cloneNode(true);
+			if (svg) return svg;
+			const stub = document.createElement("span");
+			onLoad.push(svgTemplate =>
+			{
+				const parent = stub.parentNode;
+				if (!parent) return;
+				const svg = svgTemplate?.content?.cloneNode(true);
+				parent.insertBefore(svg, stub);
+				parent.removeChild(stub);
+			});
+			return stub;
+		}
+	}
 }
 
 export class Styles
 {
-	constructor(private styles: StylesProp, public className = "") { }
+	public base?: Styles;
 
-	public static fromObjects<T extends { [key: string]: StylesProp }, K extends { [key in keyof T]: Styles }>(obj: T): K
+	constructor(private styles: StylesProp, public className = "", public prefix = "", public name = "")
+	{
+		this.base = styles.base;
+	}
+
+	public static fromObjects<T extends { [key: string]: StylesPropForMultipleCreation }, K extends { [key in keyof T]: Styles }>(obj: T, prefix?: string): K
 	{
 		const r: { [key: string]: Styles } = {};
 		Object.keys(obj).forEach(key =>
 		{
-			r[key] = new Styles(obj[key]);
+			const v = obj[key];
+			r[key] = new Styles({ ...v, base: typeof v.base == "string" ? undefined : v.base });
+			r[key].name = key;
+			r[key].prefix = prefix || "";
+		})
+		Object.keys(obj).forEach(key =>
+		{
+			const v = obj[key];
+			if (typeof v.base == "string")
+			{
+				r[key].base = r[v.base];
+				if (!r[key].base) console.error(`style with name ${v.base} does not exist`);
+			}
 		})
 
 		return <K>r;
@@ -186,7 +271,7 @@ export class Styles
 		return <K>r;
 	}
 
-	public static fromObjectsToProps<T extends { [key: string]: StylesProp }, K extends { [key in keyof T]: Props }>(obj: T): K
+	public static fromObjectsToProps<T extends { [key: string]: StylesPropForMultipleCreation }, K extends { [key in keyof T]: Props }>(obj: T): K
 	{
 		return this.stylesToProps(this.fromObjects(obj));
 	}
@@ -209,13 +294,14 @@ export class Styles
 		{
 			return Object.keys(style.styles).map(s =>
 			{
-				const v = style.styles[s as keyof StylesProp] || {};
+				const v = style.styles[s] || {};
+				if (v instanceof Styles) return null;
 
 				let selector = "." + style.className;
 				if (s != "normal") selector += ":" + s;
 
 				return this.createStyleBlock(selector, v);
-			}).join("\n");
+			}).filter(v => v).join("\n");
 		}).join("\n");
 		el.textContent = styleText;
 		return el;
@@ -230,7 +316,7 @@ export class Styles
 	}
 }
 
-type Content = string | number | HTMLElement | (() => void | Content);
+type Content = string | number | Node | (() => void | Content);
 
 interface Props
 {
@@ -242,8 +328,13 @@ interface Props
 interface StylesProp
 {
 	normal?: CssStyles,
-	[pseudoClass: string]: CssStyles | undefined,
+	base?: Styles,
+	[pseudoClass: string]: CssStyles | Styles | undefined,
 }
+
+interface StylesPropForMultipleCreation extends Modify<StylesProp, {
+	base?: Styles | string,
+}> { }
 
 type CssStylesDefault = {
 	[P in keyof CSSStyleDeclaration]?: CSSStyleDeclaration[P] | number;
@@ -254,6 +345,8 @@ interface CssStyles extends Modify<CssStylesDefault, {
 	alignItems?: "normal" | "stretch" | "center" | "start" | "end" | "flex-start" | "flex-end" | "self-start" | "self-end",
 	flexDirection?: "row" | "row-reverse" | "column" | "column-reverse",
 	position?: "fixed" | "absolute" | "static" | "relative" | "stycky",
+	fontWeight?: "bold" | "normal",
+	textAlign?: "start" | "end" | "left" | "right" | "center" | "justify" | "justify-all" | "match-parent",
 }> { }
 type Modify<T, R> = Omit<T, keyof R> & R;
 
