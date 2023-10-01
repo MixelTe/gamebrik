@@ -1,58 +1,54 @@
 import { Drawer, GameObject } from "../../../engine/index.js";
+import { Ball, BallColors } from "./ball.js";
+import { GameManager } from "./gameManager.js";
 
 export class Field extends GameObject
 {
+	public static readonly Size = 9;
+	private balls: (Ball | null)[] = [];
+
 	public Start()
 	{
-		this.addComponent(new TestObj());
+		this.transform.w = GameManager.ViewSize;
+		this.transform.h = GameManager.ViewSize;
+
+		for (let i = 0; i < Field.Size * Field.Size; i++)
+			this.balls.push(null);
+	}
+
+	public addBall(x: number, y: number, color: BallColors, big = false)
+	{
+		const ball = new Ball();
+		this.addChild(ball);
+		this.balls[x * y * Field.Size] = ball;
+		ball.x = x;
+		ball.y = y;
+		ball.color = color;
+		ball.small = !big;
 	}
 
 	public Draw(D: Drawer)
 	{
-		const gradient = D.createLinearGradient(0, 0, D.width, D.height);
-		gradient.addColorStop(0, "lightblue");
-		gradient.addColorStop(1, "lightgreen");
-		D.fillColor = gradient;
-		D.fillRect(0, 0, D.width, D.height);
+		D.fillColor = "#fff1e7";
+		D.fillRect(this.transform, 10);
 
-		const dx = D.width / 9;
-		const dy = D.height / 9;
-		for (let i = 1; i < 9; i++)
+		const cell = this.transform.w / Field.Size;
+
+		D.lineColor = "#eccebb";
+		D.lineWidth = 3;
+		const d = 1.5;
+		for (let i = 1; i < Field.Size; i++)
 		{
-			D.line(Math.floor(dx * i), 0, Math.floor(dx * i), D.height);
-			D.line(0, Math.floor(dy * i), D.width, Math.floor(dy * i));
+			D.line(Math.floor(cell * i) + d, 0, Math.floor(cell * i) + d, this.transform.h);
+			D.line(0, Math.floor(cell * i) + d, this.transform.w, Math.floor(cell * i) + d);
 		}
-	}
-}
 
-class TestObj extends GameObject
-{
-	public Start()
-	{
-		this.transform.x = 63;
-		this.transform.y = 30;
-		this.transform.w = 50;
-		this.transform.h = 25;
-		this.transform.r = 45;
-		// this.transform.sx = 1.5;
-		// this.transform.sy = 3;
-	}
-
-	public Draw(D: Drawer)
-	{
-		const gradient = D.createLinearGradient(0, 0, this.transform.w, this.transform.h);
-		gradient.addColorStop(0, "blue");
-		gradient.addColorStop(1, "lime");
-		D.fillColor = gradient;
-		D.fillRect(0, 0, this.transform.w, this.transform.h);
-	}
-
-	public Update(t: number)
-	{
-		this.transform.sx = Math.abs(500 - t % 1000) / 500 + 0.5;
-		this.transform.sy = Math.abs(500 - t % 1000) / 500 + 0.5;
-		this.transform.r = t / 10 % 360;
-		this.transform.x = Math.abs(200 - t / 10 % 400) + 100;
-		this.transform.y = Math.abs(200 - t / 20 % 400) + 100;
+		D.lineColor = "#b97c56";
+		D.lineWidth = 1;
+		for (let i = 1; i < Field.Size; i++)
+		{
+			D.line(Math.floor(cell * i), 0, Math.floor(cell * i), this.transform.h);
+			D.line(0, Math.floor(cell * i), this.transform.w, Math.floor(cell * i));
+		}
 	}
 }

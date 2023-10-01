@@ -71,8 +71,8 @@ export class Scene
 		this.drawer?._setViewSize(width, height);
 	}
 
-	public addComponent(object: GameObject)
+	public addObject<T extends GameObject>(object: T): T
 	{
-		this.rootObject.addComponent(object);
+		return this.rootObject.addChild(object);
 	}
 }

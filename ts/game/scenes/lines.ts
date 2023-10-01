@@ -8,7 +8,8 @@ export class SceneLines extends Scene
 {
 	public Start(B: Builder)
 	{
-		B.layout({ ...styles.layout, width: 500 }, () =>
+		// B.layout({ ...styles.layout, width: 500 }, () =>
+		B.layout(styles.layout, () =>
 		{
 			B.div(styles.header, () =>
 			{
@@ -20,10 +21,10 @@ export class SceneLines extends Scene
 			B.canvas({ css: { margin: 8 } });
 		});
 
-		this.setViewSize(400, 400);
+		this.setViewSize(GameManager.ViewSize, GameManager.ViewSize);
 
-		this.addComponent(new GameManager());
-		this.addComponent(new Field());
+		const field = this.addObject(new Field());
+		this.addObject(new GameManager(field));
 	}
 }
 

@@ -4,7 +4,7 @@ export class Random
 	{
 		return `${Math.random()}`.slice(2, 7);
 	}
-	
+
 	static bool()
 	{
 		return Math.random() < 0.5;
@@ -17,5 +17,10 @@ export class Random
 		if (max != undefined)
 			return Math.floor(Math.random() * (maxmin - max)) + max;
 		return Math.floor(Math.random() * maxmin);
+	}
+
+	static color()
+	{
+		return `hsl(${this.int(360)}, ${this.int(40, 60)}%, ${this.int(40, 60)}%)`;
 	}
 }

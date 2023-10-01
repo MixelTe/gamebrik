@@ -1,9 +1,12 @@
 import { Drawer } from "./drawer";
+import { GameObjectModule } from "./gameObjectModule";
 
 export class GameObject
 {
-	public transform = new Transform();
-	protected children: GameObject[] = [];
+	public transform = new Transform(this);
+	public parent: GameObject | null = null;
+	public children: GameObject[] = [];
+	public modules: GameObjectModule[] = [];
 	private started = false;
 
 	public _update(t: number)
@@ -23,11 +26,19 @@ export class GameObject
 		drawer.restore();
 	}
 
-	public addComponent(object: GameObject)
+	public addChild<T extends GameObject>(object: T): T
 	{
 		this.children.push(object);
 		if (!object.started)
 			object.Start();
+		return object;
+	}
+
+	public addModule<T extends typeof GameObjectModule, K extends InstanceType<T>>(moduleClass: T): K
+	{
+		const module = new moduleClass(this);
+		this.modules.push(module);
+		return module as K;
 	}
 
 	public Start()
@@ -57,4 +68,16 @@ export class Transform
 	public r = 0;
 	public sx = 1;
 	public sy = 1;
+
+	constructor(private object: GameObject) { }
+
+	public get global(): Transform
+	{
+		const t = new Transform(this.object);
+
+
+
+		return t;
+	}
+
 }
