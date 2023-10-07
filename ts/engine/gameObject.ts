@@ -1,5 +1,6 @@
-import { Drawer } from "./drawer";
-import { GameObjectModule } from "./gameObjectModule";
+import { Drawer } from "./drawer.js";
+import { GameObjectModule } from "./gameObjectModule.js";
+import { Utils } from "./utils.js";
 
 export class GameObject
 {
@@ -21,6 +22,7 @@ export class GameObject
 		drawer.applyObjectTransform(this.transform);
 		drawer.save();
 		this.Draw(drawer);
+		this.modules.forEach(obj => obj.onDraw(drawer));
 		drawer.restore();
 		this.children.forEach(obj => obj._draw(drawer));
 		drawer.restore();
@@ -29,6 +31,7 @@ export class GameObject
 	public addChild<T extends GameObject>(object: T): T
 	{
 		this.children.push(object);
+		object.parent = this;
 		if (!object.started)
 			object.Start();
 		return object;
@@ -61,23 +64,66 @@ export class Transform
 {
 	public x = 0;
 	public y = 0;
-	public w = 0;
-	public h = 0;
-	public ox = 0.5;
-	public oy = 0.5;
 	public r = 0;
 	public sx = 1;
 	public sy = 1;
 
-	constructor(private object: GameObject) { }
+	constructor(protected object: GameObject) { }
 
 	public get global(): Transform
 	{
-		const t = new Transform(this.object);
+		if (!this.object.parent) return this.copy();
 
+		const p = this.object.parent.transform.global;
+		const t = this.copy();
 
+		const c = Math.cos(Utils.degToRad(p.r));
+		const s = Math.sin(Utils.degToRad(p.r));
+		const nx = t.x * c - t.y * s;
+		const ny = t.x * s + t.y * c;
+		t.x = nx + p.x;
+		t.y = ny + p.y;
 
+		t.r += p.r;
+
+		// t.sx += this.sx;
+		// t.sy += this.sy;
+		
 		return t;
 	}
 
+	public copy()
+	{
+		const t = new Transform(this.object);
+		t.x = this.x;
+		t.y = this.y;
+		t.r = this.r;
+		t.sx = this.sx;
+		t.sy = this.sy;
+		return t;
+	}
+
+}
+
+export class TransformRect extends Transform
+{
+	public ox = 0.5;
+	public oy = 0.5;
+	public w = 0;
+	public h = 0;
+
+	public copy()
+	{
+		const t = new TransformRect(this.object);
+		t.x = this.x;
+		t.y = this.y;
+		t.w = this.w;
+		t.h = this.h;
+		t.ox = this.ox;
+		t.oy = this.oy;
+		t.r = this.r;
+		t.sx = this.sx;
+		t.sy = this.sy;
+		return t;
+	}
 }

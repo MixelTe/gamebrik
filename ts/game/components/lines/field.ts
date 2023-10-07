@@ -9,9 +9,6 @@ export class Field extends GameObject
 
 	public Start()
 	{
-		this.transform.w = GameManager.ViewSize;
-		this.transform.h = GameManager.ViewSize;
-
 		for (let i = 0; i < Field.Size * Field.Size; i++)
 			this.balls.push(null);
 	}
@@ -30,25 +27,25 @@ export class Field extends GameObject
 	public Draw(D: Drawer)
 	{
 		D.fillColor = "#fff1e7";
-		D.fillRect(this.transform, 10);
+		D.fillRect(0, 0, GameManager.ViewSize, GameManager.ViewSize, 10);
 
-		const cell = this.transform.w / Field.Size;
+		const cell = GameManager.ViewSize / Field.Size;
 
 		D.lineColor = "#eccebb";
 		D.lineWidth = 3;
 		const d = 1.5;
 		for (let i = 1; i < Field.Size; i++)
 		{
-			D.line(Math.floor(cell * i) + d, 0, Math.floor(cell * i) + d, this.transform.h);
-			D.line(0, Math.floor(cell * i) + d, this.transform.w, Math.floor(cell * i) + d);
+			D.line(Math.floor(cell * i) + d, 0, Math.floor(cell * i) + d, GameManager.ViewSize);
+			D.line(0, Math.floor(cell * i) + d, GameManager.ViewSize, Math.floor(cell * i) + d);
 		}
 
 		D.lineColor = "#b97c56";
 		D.lineWidth = 1;
 		for (let i = 1; i < Field.Size; i++)
 		{
-			D.line(Math.floor(cell * i), 0, Math.floor(cell * i), this.transform.h);
-			D.line(0, Math.floor(cell * i), this.transform.w, Math.floor(cell * i));
+			D.line(Math.floor(cell * i), 0, Math.floor(cell * i), GameManager.ViewSize);
+			D.line(0, Math.floor(cell * i), GameManager.ViewSize, Math.floor(cell * i));
 		}
 	}
 }

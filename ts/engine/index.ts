@@ -4,6 +4,8 @@ import { Scene } from "./scene.js";
 import { Builder, Styles } from "./builder.js";
 import { Drawer, GameImage } from "./drawer.js";
 import { GameObject } from "./gameObject.js";
+import { UserInputModule } from "./gameObjectModules/userInputModule.js";
+import { PictureModule } from "./gameObjectModules/pictureModule.js";
 
 const Engine = engine;
 
@@ -17,4 +19,7 @@ export
 	Drawer,
 	GameImage,
 	GameObject,
+
+	UserInputModule,
+	PictureModule,
 }

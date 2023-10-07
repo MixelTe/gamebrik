@@ -1,6 +1,9 @@
-import { GameObject } from "./gameObject";
+import { Drawer } from "./drawer.js";
+import { GameObject } from "./gameObject.js";
 
 export class GameObjectModule
 {
-	constructor(private object: GameObject) { }
+	constructor(protected object: GameObject) { }
+
+	public onDraw(drawer: Drawer) { }
 }

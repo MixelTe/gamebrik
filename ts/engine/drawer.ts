@@ -1,4 +1,4 @@
-import { Transform } from "./gameObject.js";
+import { Transform, TransformRect } from "./gameObject.js";
 import { Utils } from "./utils.js";
 
 export class Drawer
@@ -63,6 +63,13 @@ export class Drawer
 	}
 
 	public applyObjectTransform(t: Transform)
+	{
+		this.ctx.translate(t.x, t.y);
+		this.ctx.rotate(Utils.degToRad(t.r));
+		this.ctx.scale(t.sx, t.sy);
+	}
+
+	public applyObjectTransformRect(t: TransformRect)
 	{
 		this.ctx.translate(t.x, t.y);
 		const drx = t.w * t.ox;
@@ -163,6 +170,42 @@ export class Drawer
 			if (fill) this.ctx.fill();
 			else this.ctx.stroke();
 		}
+	}
+
+	public drawTransform(t: Transform, fill = false)
+	{
+		// const drx = t.w * t.ox;
+		// const dry = t.h * t.oy;
+		// function translate(x: number, y: number): [number, number]
+		// {
+		// 	const c = Math.cos(Utils.degToRad(t.r));
+		// 	const s = Math.sin(Utils.degToRad(t.r));
+		// 	x -= drx;
+		// 	y -= dry;
+		// 	x = x * c - y * s;
+		// 	y = x * s + y * c;
+		// 	x += drx;
+		// 	y += dry;
+
+		// 	// this.ctx.scale(t.sx, t.sy);
+
+		// 	x += t.x;
+		// 	y += t.y;
+		// 	return [x, y];
+		// }
+
+		this.fillCircle(t.x, t.y, 2);
+		const x = t.x + Math.cos(Utils.degToRad(t.r)) * 10;
+		const y = t.y + Math.sin(Utils.degToRad(t.r)) * 10;
+		this.line(t.x, t.y, x, y);
+		// this.ctx.beginPath();
+		// this.ctx.moveTo(...translate(0, 0));
+		// this.ctx.lineTo(...translate(t.w, 0));
+		// this.ctx.lineTo(...translate(t.w, t.h));
+		// this.ctx.lineTo(...translate(0, t.h));
+		// this.ctx.lineTo(...translate(0, 0));
+		// if (fill) this.ctx.fill();
+		// else this.ctx.stroke();
 	}
 
 	public image(imgObj: GameImage, x: number, y: number, w: number, h: number)

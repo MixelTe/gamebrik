@@ -2,28 +2,25 @@ import { Drawer, GameObject } from "../../../engine/index.js";
 import { Field } from "./field.js";
 import { GameManager } from "./gameManager.js";
 
+
 export class Ball extends GameObject
 {
+	private Size = GameManager.ViewSize / Field.Size;
+
 	public x = 0;
 	public y = 0;
 	public color: BallColors = BallColors.Blue;
 	public small = true;
 
-	public Start()
-	{
-		this.transform.w = GameManager.ViewSize / Field.Size;
-		this.transform.h = GameManager.ViewSize / Field.Size;
-	}
-
 	public Update(t: number): void
 	{
-		this.transform.x = this.x * this.transform.w;
-		this.transform.y = this.y * this.transform.w;
+		this.transform.x = this.x * this.Size;
+		this.transform.y = this.y * this.Size;
 	}
 
 	public Draw(D: Drawer)
 	{
-		const r = this.transform.w / 2;
+		const r = this.Size / 2;
 
 		let color = "";
 		if (this.color == BallColors.Blue) color = "#00859d";
