@@ -1,35 +1,35 @@
-import { Builder, Engine, Scene, Styles } from "../../engine/index.js";
+import { SceneBuilder, Engine, Scene, Styles, Localization } from "../../engine/index.js";
 import { Colors, StylesBase } from "../res.js";
 import SceneIds from "../scenes.js";
 
 export class SceneStart extends Scene
 {
-	public Start(B: Builder)
+	public Start(B: SceneBuilder)
 	{
 		B.layout({ ...styles.layout, width: 800 }, null, () =>
 		{
-			B.button({ ...styles.langSwitch, onClick: () => Engine.changeLang() }, B.sync(texts.lang));
+			B.button({ ...styles.langSwitch, onClick: () => Engine.changeLang() }, B.syncLang(texts.lang));
 			B.div(styles.container, () =>
 			{
-				B.div(styles.title, B.sync(texts.title));
+				B.div(styles.title, B.syncLang(texts.title));
 				B.div(styles.menu, () =>
 				{
-					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.sync(texts.game1));
-					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.sync(texts.game2));
-					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.sync(texts.game3));
+					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.syncLang(texts.game1));
+					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.syncLang(texts.game2));
+					B.button({ ...styles.button, onClick: () => Engine.startScene(SceneIds.lines) }, B.syncLang(texts.game3));
 				})
 			})
 		});
 	}
 }
 
-const texts = Engine.localize({
+const texts = <Localization>{
 	lang: { en: "En", ru: "Ru" },
 	title: { en: "Gamebrik", ru: "Игрубрик" },
 	game1: { en: "Lines", ru: "Lines" },
 	game2: { en: "Another game", ru: "Другая игра" },
 	game3: { en: "One more game", ru: "Ещё одна игра" },
-});
+};
 
 const styles = Styles.fromObjectsToProps({
 	layout: {

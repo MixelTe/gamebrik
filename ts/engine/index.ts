@@ -1,7 +1,8 @@
 import { engine } from "./engine.js";
 import { Utils } from "./utils.js";
 import { Scene } from "./scene.js";
-import { Builder, Styles } from "./builder.js";
+import { SceneBuilder, DynamicValue, Localization } from "./builder.js";
+import { Styles } from "./styles.js";
 import { Drawer, GameImage } from "./drawer.js";
 import { GameObject } from "./gameObject.js";
 import { UserInputModule } from "./gameObjectModules/userInputModule.js";
@@ -14,7 +15,9 @@ export
 	Engine,
 	Utils,
 	Scene,
-	Builder,
+	SceneBuilder,
+	DynamicValue,
+	Localization,
 	Styles,
 	Drawer,
 	GameImage,

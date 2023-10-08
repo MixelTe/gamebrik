@@ -8,6 +8,7 @@ export class GameObject
 	public parent: GameObject | null = null;
 	public children: GameObject[] = [];
 	public modules: GameObjectModule[] = [];
+	public drawDev = false;
 	private started = false;
 
 	public _update(t: number)
@@ -25,7 +26,15 @@ export class GameObject
 		this.modules.forEach(obj => obj.onDraw(drawer));
 		drawer.restore();
 		this.children.forEach(obj => obj._draw(drawer));
+		if (this.drawDev) this.drawTransform(drawer);
 		drawer.restore();
+	}
+
+	private drawTransform(drawer: Drawer)
+	{
+		drawer.fillCircle(0, 0, 2);
+		drawer.lineColor = "red";
+		drawer.line(0, 0, 10, 0);
 	}
 
 	public addChild<T extends GameObject>(object: T): T
@@ -77,8 +86,11 @@ export class Transform
 		const p = this.object.parent.transform.global;
 		const t = this.copy();
 
+
 		const c = Math.cos(Utils.degToRad(p.r));
 		const s = Math.sin(Utils.degToRad(p.r));
+		t.x *= p.sx;
+		t.y *= p.sy;
 		const nx = t.x * c - t.y * s;
 		const ny = t.x * s + t.y * c;
 		t.x = nx + p.x;
@@ -86,9 +98,11 @@ export class Transform
 
 		t.r += p.r;
 
-		// t.sx += this.sx;
-		// t.sy += this.sy;
-		
+		const nsx = t.sx * c - t.sy * s;
+		const nsy = t.sx * s + t.sy * c;
+		t.sx = p.sx * nsx;
+		t.sy = p.sy * nsy;
+
 		return t;
 	}
 
@@ -107,10 +121,10 @@ export class Transform
 
 export class TransformRect extends Transform
 {
-	public ox = 0.5;
-	public oy = 0.5;
 	public w = 0;
 	public h = 0;
+	public ox = 0.5;
+	public oy = 0.5;
 
 	public copy()
 	{

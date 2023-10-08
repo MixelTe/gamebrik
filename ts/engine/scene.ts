@@ -1,28 +1,34 @@
-import { Builder } from "./builder.js";
+import { SceneBuilder } from "./builder.js";
 import { Drawer } from "./drawer.js";
 import { GameObject } from "./gameObject.js";
 
 export class Scene
 {
 	public readonly root = document.createElement("div");
-	private builder = new Builder(this);
+	private builder = new SceneBuilder(this);
 	private drawer: Drawer | null = null;
-	private canvasStarted = false;
 	private rootObject: GameObject = new GameObject();
 
-	public _engineEvent(event: "start" | "exit" | "langChange")
+	public _engineEvent(event: "start" | "update" | "exit" | "langChange", t = 0)
 	{
 		if (event == "start")
 		{
 			this.Start(this.builder);
 			this.builder._addStyles();
 		}
+		else if (event == "update")
+		{
+			if (!this.drawer) return;
+
+			this.drawer._clear();
+			this.rootObject._update(t);
+			this.rootObject._draw(this.drawer);
+		}
 		else if (event == "exit")
 		{
 			this.Exit();
-			this.builder._removeStyles();
+			this.builder._destroy();
 			this.drawer?._destroy();
-			this.canvasStarted = false;
 		}
 		else if (event == "langChange")
 		{
@@ -33,30 +39,14 @@ export class Scene
 	public _initCanvas(canvas: HTMLCanvasElement)
 	{
 		this.drawer = new Drawer(canvas);
-		const alreadyStarted = this.canvasStarted;
-		this.canvasStarted = true;
-		if (!alreadyStarted)
-			this.gameLoop(0);
 	}
 
-	private gameLoop(t: number)
+	public _getRootObject()
 	{
-		const drawer = this.drawer;
-		if (!drawer)
-		{
-			this.canvasStarted = false;
-			return;
-		}
-
-		drawer._clear();
-		this.rootObject._update(t);
-		this.rootObject._draw(drawer);
-
-		if (this.canvasStarted)
-			requestAnimationFrame(this.gameLoop.bind(this));
+		return this.rootObject;
 	}
 
-	public Start(builder: Builder)
+	public Start(builder: SceneBuilder)
 	{
 		builder.canvas({ css: { height: "100dvh" } });
 	}

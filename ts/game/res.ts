@@ -1,4 +1,4 @@
-import { Builder, Styles } from "../engine/builder.js"
+import { SceneBuilder, Styles } from "../engine/index.js"
 
 export const Colors = {
 	background: "#edd29e",
@@ -15,7 +15,7 @@ export const Fonts = {
 }
 
 export const Images = {
-	backArrow: Builder.loadSvg("./res/arrow_back.svg", "fill"),
+	backArrow: SceneBuilder.loadSvg("./res/arrow_back.svg", "fill"),
 }
 
 export const StylesBase = Styles.fromObjects({

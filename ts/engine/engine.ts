@@ -1,11 +1,19 @@
-import { Styles } from "./builder.js";
+import { Styles } from "./styles.js";
+import { Inspector } from "./inspector.js";
 import { Scene } from "./scene.js";
 
 class Engine
 {
 	private scenes = new Map<string, typeof Scene>();
+	private inspector = new Inspector();
 	private currentScene: Scene | null = null;
 	private lang: Language = "ru";
+	private gameLoopStarted = false;
+
+	public get language(): Language
+	{
+		return this.lang;
+	}
 
 	constructor()
 	{
@@ -16,6 +24,13 @@ class Engine
 		document.head.appendChild(styles);
 		document.body.classList.add("body");
 		window.addEventListener("contextmenu", e => e.preventDefault());
+	}
+
+	private gameLoop(t: number)
+	{
+		this.currentScene?._engineEvent("update", t);
+		this.inspector.update();
+		requestAnimationFrame(this.gameLoop.bind(this));
 	}
 
 	public registerScenes(scenes: { [id: string]: typeof Scene })
@@ -42,7 +57,15 @@ class Engine
 		document.body.innerHTML = "";
 		document.body.appendChild(this.currentScene.root);
 		this.currentScene.root.classList.add("scene");
+
 		localStorage.setItem(localstorageKey_scene, id);
+		this.inspector.setRoot(this.currentScene._getRootObject());
+
+		if (!this.gameLoopStarted)
+		{
+			this.gameLoopStarted = true;
+			this.gameLoop(0);
+		}
 	}
 
 	public startSameSceneAfterReload(defaultSceneId: string)
@@ -51,15 +74,11 @@ class Engine
 		this.startScene(id);
 	}
 
-	public localize<T extends Record<string, Record<Language, any>>, K extends { [key in keyof T]: () => T[key][Language] }>(fields: T): K
+	public showInspector()
 	{
-		const r: { [key: string]: any } = {};
-		Object.keys(fields).forEach(key =>
-		{
-			r[key] = () => fields[key][this.lang];
-		})
-
-		return <K>r;
+		this.inspector.show();
+		if (this.currentScene)
+			this.inspector.setRoot(this.currentScene._getRootObject());
 	}
 
 	public changeLang()
@@ -70,7 +89,7 @@ class Engine
 	}
 }
 
-type Language = "ru" | "en";
+export type Language = "ru" | "en";
 
 const localstorageKey_scene = "Engine_currentScene";
 

@@ -1,20 +1,19 @@
+import { CssStyles, Styles } from "./styles.js";
 import { Random } from "./random.js";
 import { Scene } from "./scene.js";
+import { Language } from "./engine.js";
+import { Engine } from "./index.js";
 
 export class Builder
 {
 	private styles = new Set<Styles>();
 	private contextStack: HTMLElement[] = [];
-	private context: HTMLElement;
-	private prefix: string;
 	private stylesEl: HTMLStyleElement | null = null;
 	private langSync: (() => void)[] = [];
+	private dynamics: { c: HTMLElement, v: DynamicValue<any> }[] = [];
+	private addedDynamics: { update: () => void, v: DynamicValue<any> }[] = [];
 
-	constructor(private scene: Scene)
-	{
-		this.prefix = scene.constructor.name;
-		this.context = scene.root;
-	}
+	constructor(private prefix: string, private context: HTMLElement) { }
 
 	public initEl<K extends keyof HTMLElementTagNameMap>(tagName: K, props?: Props, content?: Content)
 	{
@@ -69,7 +68,7 @@ export class Builder
 		return el;
 	}
 
-	private appendContent(content: Content)
+	private appendContent(content: Content, firstRender = true)
 	{
 		if (typeof content == "number" || typeof content == "string")
 		{
@@ -78,7 +77,28 @@ export class Builder
 		else if (typeof content == "function")
 		{
 			const r = content();
+			if (this.dynamics.length != 0)
+			{
+				if (firstRender)
+				{
+					let update: (() => void) | null = null;
+					this.dynamics.forEach(({ c, v }) =>
+					{
+						if (c == this.context)
+						{
+							if (!update) update = this.synced(content);
+							this.addedDynamics.push({ update, v });
+							v.onChange(update);
+						}
+					});
+				}
+				this.dynamics = this.dynamics.filter(v => v.c != this.context);
+			}
 			if (r) this.appendContent(r);
+		}
+		else if (content instanceof DynamicValue)
+		{
+			this.appendContent(() => content.get(this));
 		}
 		else if (typeof content == "object")
 		{
@@ -103,30 +123,42 @@ export class Builder
 		this.langSync.forEach(el => el());
 	}
 
-	public _removeStyles()
+	public _destroy()
 	{
 		if (this.stylesEl)
 		{
 			document.head.removeChild(this.stylesEl);
 			this.stylesEl = null;
 		}
+		this.addedDynamics.forEach(({ update, v }) => v.removeOnChange(update));
 	}
 
-	public sync(content: Content)
+	public _dynamic(value: DynamicValue<any>)
+	{
+		this.dynamics.push({ c: this.context, v: value });
+	}
+
+	private synced(content: Content)
+	{
+		const parent = this.context;
+		const update = (firstRender = false) =>
+		{
+			const context = this.context;
+			this.context = parent;
+			this.context.innerHTML = "";
+			this.appendContent(content, firstRender);
+			this.context = context;
+		}
+		return update;
+	}
+
+	public syncLang(content: Localization[string])
 	{
 		return () =>
 		{
-			const parent = this.context;
-			const update = () =>
-			{
-				const context = this.context;
-				this.context = parent;
-				this.context.innerHTML = "";
-				this.appendContent(content);
-				this.context = context;
-			}
-			this.langSync.push(update)
-			update();
+			const update = this.synced(() => content[Engine.language]);
+			update(true);
+			this.langSync.push(update);
 		}
 	}
 
@@ -182,7 +214,6 @@ export class Builder
 	{
 		const canvas = document.createElement("canvas");
 		const div = this.div({ ...props, css: { ...props?.css, display: "flex" } }, () => canvas);
-		this.scene._initCanvas(canvas);
 		return div;
 	}
 
@@ -228,127 +259,65 @@ export class Builder
 	}
 }
 
-export class Styles
+export class SceneBuilder extends Builder
 {
-	public base?: Styles;
-
-	constructor(private styles: StylesProp, public className = "", public prefix = "", public name = "")
+	constructor(private scene: Scene)
 	{
-		this.base = styles.base;
+		super(scene.constructor.name, scene.root);
 	}
 
-	public static fromObjects<T extends { [key: string]: StylesPropForMultipleCreation }, K extends { [key in keyof T]: Styles }>(obj: T, prefix?: string): K
+	public canvas(props?: Props)
 	{
-		const r: { [key: string]: Styles } = {};
-		Object.keys(obj).forEach(key =>
-		{
-			const v = obj[key];
-			r[key] = new Styles({ ...v, base: typeof v.base == "string" ? undefined : v.base });
-			r[key].name = key;
-			r[key].prefix = prefix || "";
-		})
-		Object.keys(obj).forEach(key =>
-		{
-			const v = obj[key];
-			if (typeof v.base == "string")
-			{
-				r[key].base = r[v.base];
-				if (!r[key].base) console.error(`style with name ${v.base} does not exist`);
-			}
-		})
-
-		return <K>r;
-	}
-
-	public static stylesToProps<T extends { [key: string]: Styles }, K extends { [key in keyof T]: Props }>(obj: T): K
-	{
-		const r: { [key: string]: Props } = {};
-		Object.keys(obj).forEach(key =>
-		{
-			r[key] = { styles: obj[key] };
-		})
-
-		return <K>r;
-	}
-
-	public static fromObjectsToProps<T extends { [key: string]: StylesPropForMultipleCreation }, K extends { [key in keyof T]: Props }>(obj: T): K
-	{
-		return this.stylesToProps(this.fromObjects(obj));
-	}
-
-	public static processStyles(styles: CssStyles)
-	{
-		return Object.keys(styles).map(key =>
-		{
-			let v = styles[key as keyof CssStyles] ?? "";
-			if (typeof v == "number") v = `${v}px`;
-			const p = key.split(/(?=[A-Z])/).map(v => v.toLocaleLowerCase()).join("-");
-			return { p, v };
-		}).filter(v => typeof v.v == "string").map(({ p, v }) => ({ p, v: `${v}` }));
-	}
-
-	public static createStyles(styles: Styles[])
-	{
-		const el = document.createElement("style");
-		const styleText = styles.map(style =>
-		{
-			return Object.keys(style.styles).map(s =>
-			{
-				const v = style.styles[s] || {};
-				if (v instanceof Styles) return null;
-
-				let selector = "." + style.className;
-				if (s != "normal") selector += ":" + s;
-
-				return this.createStyleBlock(selector, v);
-			}).filter(v => v).join("\n");
-		}).join("\n");
-		el.textContent = styleText;
-		return el;
-	}
-
-	private static createStyleBlock(selector: string, styles: CssStyles)
-	{
-		let block = selector + " {\n";
-		block += this.processStyles(styles).map(({ p, v }) => `  ${p}: ${v};`).join("\n");
-		block += "\n}";
-		return block;
+		const canvas = document.createElement("canvas");
+		const div = this.div({ ...props, css: { ...props?.css, display: "flex" } }, () => canvas);
+		this.scene._initCanvas(canvas);
+		return div;
 	}
 }
 
-type Content = string | number | Node | (() => void | Content);
+export class DynamicValue<T>
+{
+	private listeners: (() => void)[] = [];
+	constructor(private value: T) { }
 
-interface Props
+	public get v(): T
+	{
+		return this.value;
+	}
+
+	public set v(v: T)
+	{
+		this.value = v;
+		this.listeners.forEach(f => f());
+	}
+
+	public get(builder: Builder): T
+	{
+		builder._dynamic(this);
+		return this.value;
+	}
+
+	public onChange(listener: () => void)
+	{
+		this.listeners.push(listener);
+	}
+
+	public removeOnChange(listener: () => void)
+	{
+		const i = this.listeners.indexOf(listener);
+		if (i >= 0) this.listeners.splice(i, 1);
+	}
+}
+
+type Content = string | number | DynamicValue<Content> | Node | (() => void | Content);
+export type Localization = Record<string, Record<Language, Content>>
+
+export interface Props
 {
 	css?: CssStyles,
 	styles?: Styles,
 	onClick?: (e: MouseEvent) => void,
 }
-
-interface StylesProp
-{
-	normal?: CssStyles,
-	base?: Styles,
-	[pseudoClass: string]: CssStyles | Styles | undefined,
-}
-
-interface StylesPropForMultipleCreation extends Modify<StylesProp, {
-	base?: Styles | string,
-}> { }
-
-type CssStylesDefault = {
-	[P in keyof CSSStyleDeclaration]?: CSSStyleDeclaration[P] | number;
-};
-interface CssStyles extends Modify<CssStylesDefault, {
-	display?: "block" | "inline" | "inline-block" | "flex" | "inline-flex" | "grid" | "inline-grid" | "flow-root",
-	justifyContent?: "center" | "start" | "end" | "flex-start" | "flex-end" | "left" | "right",
-	alignItems?: "normal" | "stretch" | "center" | "start" | "end" | "flex-start" | "flex-end" | "self-start" | "self-end",
-	flexDirection?: "row" | "row-reverse" | "column" | "column-reverse",
-	position?: "fixed" | "absolute" | "static" | "relative" | "stycky",
-	fontWeight?: "bold" | "normal",
-	textAlign?: "start" | "end" | "left" | "right" | "center" | "justify" | "justify-all" | "match-parent",
-}> { }
-type Modify<T, R> = Omit<T, keyof R> & R;
 
 interface PropsLayout extends Props
 {

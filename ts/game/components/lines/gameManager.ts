@@ -19,9 +19,10 @@ export class GameManager extends GameObject
 	public Start()
 	{
 		this.t1 = this.addChild(new Test(130, 100, 100, 50, "#ff000050"));
-		// this.t1.transform.sx = 1.4;
-		this.t2 = this.t1.addChild(new Test(20, 40, 150, 50, "#00ff0050", true));
-		this.t2.transform.r = 15;
+		this.t1.transform.sx = 1.4;
+		this.t2 = this.t1.addChild(new Test(20, 40, 150, 50, "#00ff0050", false));
+		// this.t2.transform.sx = 0.5;
+		this.t2.transform.r = 90;
 		this.t3 = this.t2.addChild(new Test(-60, 60, 90, 50, "#0000ff50", false));
 		this.t3.addModule(UserInputModule);
 
