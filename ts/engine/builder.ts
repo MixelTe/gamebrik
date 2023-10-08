@@ -7,7 +7,6 @@ import { Engine } from "./index.js";
 export class Builder
 {
 	private styles = new Set<Styles>();
-	private contextStack: HTMLElement[] = [];
 	private stylesEl: HTMLStyleElement | null = null;
 	private langSync: (() => void)[] = [];
 	private dynamics: { c: HTMLElement, v: DynamicValue<any> }[] = [];
@@ -20,25 +19,33 @@ export class Builder
 		const el = document.createElement(tagName);
 		if (this.context) this.context.appendChild(el);
 
-		this.contextStack.push(this.context);
+		const prevContext = this.context;
 		this.context = el;
 
 		if (props)
 		{
 			if (props.styles)
 			{
-				let styles: Styles | undefined = props.styles;
+				let styles: Styles[] = [];
+				if (props.styles instanceof Array) styles = props.styles;
+				else if (props.styles) styles = [props.styles];
+
 				const newStyles: Styles[] = [];
 
-				while (styles)
+				for (let i = 0; i < styles.length; i++)
 				{
-					if (!styles.className || (!styles.prefix && !styles.className.startsWith(this.prefix)))
-					{
-						styles.className = [styles.prefix || this.prefix, styles.name || tagName, Random.string()].join("_");
-					}
-					newStyles.push(styles);
+					let style: Styles | undefined = styles[i];
 
-					styles = styles.base;
+					while (style)
+					{
+						if (!style.className || (!style.prefix && !style.className.startsWith(this.prefix)))
+						{
+							style.className = [style.prefix || this.prefix, style.name || tagName, Random.string()].join("_");
+						}
+						newStyles.push(style);
+
+						style = style.base;
+					}
 				}
 
 				for (let i = newStyles.length - 1; i >= 0; i--)
@@ -63,7 +70,7 @@ export class Builder
 		if (content)
 			this.appendContent(content);
 
-		this.context = this.contextStack.pop()!;
+		this.context = prevContext;
 
 		return el;
 	}
@@ -103,6 +110,34 @@ export class Builder
 		else if (typeof content == "object")
 		{
 			this.context.appendChild(content);
+		}
+	}
+
+	public addStyle(style: Styles)
+	{
+		if (!style.className || (!style.prefix && !style.className.startsWith(this.prefix)))
+		{
+			style.className = [style.prefix || this.prefix, style.name, Random.string()].join("_");
+		}
+		this.styles.add(style);
+		return style.className;
+	}
+
+	public addAllStyles(styles: Styles[] | { [key: string]: Styles } | { [key: string]: { styles: Styles } })
+	{
+		if (styles instanceof Array)
+		{
+			styles.forEach(style => this.addStyle(style));
+		}
+		else
+		{
+			Object.values(styles).forEach(style =>
+			{
+				if (style instanceof Styles)
+					this.addStyle(style);
+				else
+					this.addStyle(style.styles);
+			});
 		}
 	}
 
@@ -315,7 +350,7 @@ export type Localization = Record<string, Record<Language, Content>>
 export interface Props
 {
 	css?: CssStyles,
-	styles?: Styles,
+	styles?: Styles | Styles[],
 	onClick?: (e: MouseEvent) => void,
 }
 

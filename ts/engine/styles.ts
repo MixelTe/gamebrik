@@ -1,9 +1,7 @@
-import { Props } from "./builder.js";
-
-
 export class Styles
 {
 	public base?: Styles;
+	private depends: { [name: string]: Styles } = {};
 
 	constructor(private styles: StylesProp, public className = "", public prefix = "", public name = "")
 	{
@@ -30,16 +28,28 @@ export class Styles
 				r[key].base = r[v.base];
 				if (!r[key].base) console.error(`style with name ${v.base} does not exist`);
 			}
+
+			Object.keys(v).forEach(skey =>
+			{
+				if (!skey.includes("$")) return;
+				for (const item of skey.matchAll(/\$([a-zA-Z_-]+)/g))
+				{
+					const style = item[1];
+					const s = r[style];
+					if (!s) { console.error(`style with name ${v.base} does not exist`); break; };
+					r[key].depends[style] = s;
+				}
+			});
 		});
 
 		return <K>r;
 	}
 
 	public static stylesToProps<T extends { [key: string]: Styles; }, K extends {
-		[key in keyof T]: Props;
+		[key in keyof T]: PropsOnlyStyles;
 	}>(obj: T): K
 	{
-		const r: { [key: string]: Props; } = {};
+		const r: { [key: string]: PropsOnlyStyles; } = {};
 		Object.keys(obj).forEach(key =>
 		{
 			r[key] = { styles: obj[key] };
@@ -49,7 +59,7 @@ export class Styles
 	}
 
 	public static fromObjectsToProps<T extends { [key: string]: StylesPropForMultipleCreation; }, K extends {
-		[key in keyof T]: Props;
+		[key in keyof T]: PropsOnlyStyles;
 	}>(obj: T): K
 	{
 		return this.stylesToProps(this.fromObjects(obj));
@@ -74,10 +84,36 @@ export class Styles
 			return Object.keys(style.styles).map(s =>
 			{
 				const v = style.styles[s] || {};
-				if (v instanceof Styles) return null;
+				if (v instanceof Styles || s == "base") return null;
 
-				let selector = "." + style.className;
-				if (s != "normal") selector += ":" + s;
+				let selector = "";
+				if (s.startsWith("!"))
+				{
+					selector = s.slice(1);
+					for (const item of selector.matchAll(/\$([a-zA-Z_-]+|\$)/g))
+					{
+						const styleName = item[1];
+
+						if (styleName == "$")
+						{
+							const i = selector.indexOf("$$");
+							selector = selector.slice(0, i) + style.className + selector.slice(i + 2);
+						}
+						else
+						{
+							const s = style.depends[styleName];
+							if (!s) { console.error(`style with name ${styleName} does not exist`); break; };
+
+							const i = selector.indexOf("$" + styleName);
+							selector = selector.slice(0, i) + s.className + selector.slice(i + styleName.length + 1);
+						}
+					}
+				}
+				else
+				{
+					selector += "." + style.className;
+					if (s != "normal") selector += ":" + s;
+				}
 
 				return this.createStyleBlock(selector, v);
 			}).filter(v => v).join("\n");
@@ -93,6 +129,21 @@ export class Styles
 		block += "\n}";
 		return block;
 	}
+
+	public static combine(...styles: PropsOnlyStyles[]): PropsMultipleStyles
+	{
+		return { styles: styles.map(s => s.styles), };
+	}
+}
+
+interface PropsOnlyStyles
+{
+	styles: Styles,
+}
+
+interface PropsMultipleStyles
+{
+	styles: Styles[],
 }
 
 export interface StylesProp
@@ -103,6 +154,7 @@ export interface StylesProp
 }
 
 export interface StylesPropForMultipleCreation extends Modify<StylesProp, {
+	normal?: CssStyles,
 	base?: Styles | string,
 }> { }
 

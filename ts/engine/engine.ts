@@ -48,14 +48,19 @@ class Engine
 		if (scene == undefined)
 			throw new Error(`Engine.startScene: no scene with id: ${id}`);
 
+		let pastRoot: HTMLElement | null = null;
 		if (this.currentScene)
+		{
 			this.currentScene._engineEvent("exit");
+			pastRoot = this.currentScene.root;
+		}
 
 		this.currentScene = new scene();
 		this.currentScene._engineEvent("start");
 
-		document.body.innerHTML = "";
-		document.body.appendChild(this.currentScene.root);
+		if (pastRoot)
+			document.body.removeChild(pastRoot);
+		document.body.prepend(this.currentScene.root);
 		this.currentScene.root.classList.add("scene");
 
 		localStorage.setItem(localstorageKey_scene, id);
